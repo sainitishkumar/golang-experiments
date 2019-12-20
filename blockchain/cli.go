@@ -10,12 +10,14 @@ type cli struct {
 	bc *BlockChain
 }
 
+// PrintUsage prints the usage of the CLI
 func (Cli *cli) PrintUsage() {
 	fmt.Println("Use either print or addblock functionality")
 	fmt.Println("blockchain addblock <data>")
 	fmt.Println("blockchain printchain")
 }
 
+// PrintChain prints the BC from newest to oldest
 func (Cli *cli) PrintChain() {
 	bcIter := Cli.bc.GetIterator()
 	block := bcIter.GetBlock()
@@ -32,6 +34,7 @@ func (Cli *cli) PrintChain() {
 	}
 }
 
+// Run is for parsing CL args and execute them
 func (Cli *cli) Run() {
 	if len(os.Args) < 2 {
 		Cli.PrintUsage()
