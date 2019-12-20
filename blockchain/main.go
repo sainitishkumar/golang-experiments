@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"fmt"
 )
 
 // IntToHex changes val into its hexa-decimal format
@@ -14,20 +13,8 @@ func IntToHex(val int64) []byte {
 
 func main() {
 	bc := CreateBlockChain()
-	bc.AddBlock("First block")
-	bc.AddBlock("Second block")
+	defer bc.db.Close()
 
-	bcIter := bc.GetIterator()
-	block := bcIter.GetBlock()
-	for string(block.BlockData) != "Genesis block rocks" {
-		b := block
-		pow := NewProofofWork(b)
-		valid := pow.ValidatePow()
-		fmt.Printf("Prev. hash: %x\n", b.PrevBlockHash)
-		fmt.Printf("Data: %s\n", b.BlockData)
-		fmt.Printf("Hash: %x\n", b.BlockHash)
-		fmt.Println("Validity by POW: ", valid)
-		fmt.Println()
-		block = bcIter.GetBlock()
-	}
+	Cli := cli{bc}
+	Cli.Run()
 }

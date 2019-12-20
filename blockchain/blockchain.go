@@ -128,6 +128,6 @@ func (bcIter *BlockChainIterator) GetBlock() *Block {
 }
 
 // PrintBlockChain prints the BC in the order of blocks
-func (bc *BlockChain) PrintBlockChain() {
+// func (bc *BlockChain) PrintBlockChain() {
 
-}
+// }
