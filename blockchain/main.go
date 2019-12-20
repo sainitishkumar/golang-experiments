@@ -15,6 +15,6 @@ func main() {
 	bc := CreateBlockChain()
 	defer bc.db.Close()
 
-	Cli := cli{bc}
-	Cli.Run()
+	cli := Cli{bc}
+	cli.Run()
 }

@@ -6,20 +6,21 @@ import (
 	"os"
 )
 
-type cli struct {
+// Cli struct
+type Cli struct {
 	bc *BlockChain
 }
 
 // PrintUsage prints the usage of the CLI
-func (Cli *cli) PrintUsage() {
+func (cli *Cli) PrintUsage() {
 	fmt.Println("Use either print or addblock functionality")
 	fmt.Println("blockchain addblock <data>")
 	fmt.Println("blockchain printchain")
 }
 
 // PrintChain prints the BC from newest to oldest
-func (Cli *cli) PrintChain() {
-	bcIter := Cli.bc.GetIterator()
+func (cli *Cli) PrintChain() {
+	bcIter := cli.bc.GetIterator()
 	block := bcIter.GetBlock()
 	for string(block.BlockData) != "Genesis block rocks" {
 		b := block
@@ -35,9 +36,9 @@ func (Cli *cli) PrintChain() {
 }
 
 // Run is for parsing CL args and execute them
-func (Cli *cli) Run() {
+func (cli *Cli) Run() {
 	if len(os.Args) < 2 {
-		Cli.PrintUsage()
+		cli.PrintUsage()
 		os.Exit(2)
 	}
 	addblock := flag.NewFlagSet("addblock", flag.ExitOnError)
@@ -51,7 +52,7 @@ func (Cli *cli) Run() {
 	case "printchain":
 		printchain.Parse(os.Args[2:])
 	default:
-		Cli.PrintUsage()
+		cli.PrintUsage()
 		os.Exit(2)
 	}
 
@@ -60,9 +61,8 @@ func (Cli *cli) Run() {
 			addblock.Usage()
 			os.Exit(2)
 		}
-		Cli.bc.AddBlock(*addblockdata)
+		cli.bc.AddBlock(*addblockdata)
 	} else if printchain.Parsed() {
-		Cli.PrintChain()
+		cli.PrintChain()
 	}
-
 }
