@@ -17,7 +17,10 @@ func main() {
 	bc.AddBlock("First block")
 	bc.AddBlock("Second block")
 
-	for _, b := range bc.Blocks {
+	bcIter := bc.GetIterator()
+	block := bcIter.GetBlock()
+	for string(block.BlockData) != "Genesis block rocks" {
+		b := block
 		pow := NewProofofWork(b)
 		valid := pow.ValidatePow()
 		fmt.Printf("Prev. hash: %x\n", b.PrevBlockHash)
@@ -25,5 +28,6 @@ func main() {
 		fmt.Printf("Hash: %x\n", b.BlockHash)
 		fmt.Println("Validity by POW: ", valid)
 		fmt.Println()
+		block = bcIter.GetBlock()
 	}
 }

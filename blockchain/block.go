@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/gob"
 	"strconv"
 	"time"
 )
@@ -44,4 +45,23 @@ func CreateBlock(blockData string, prevBlockHash []byte) *Block {
 	b.Nonce = nonce
 	b.BlockHash = hash
 	return b
+}
+
+// Serialize converts the block struct into byte array
+// this will be helpful as BoltBD(key -> value) stores in byte array format
+func (b *Block) Serialize() []byte {
+	var temp bytes.Buffer
+	encoder := gob.NewEncoder(&temp)
+	err := encoder.Encode(b)
+	_ = err
+	return temp.Bytes()
+}
+
+// DeSerialize converts the bytes read from BoltDB into blocks
+func DeSerialize(data []byte) *Block {
+	var block Block
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+	err := decoder.Decode(&block)
+	_ = err
+	return &block
 }
