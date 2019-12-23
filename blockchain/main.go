@@ -12,9 +12,6 @@ func IntToHex(val int64) []byte {
 }
 
 func main() {
-	bc := CreateBlockChain()
-	defer bc.db.Close()
-
-	cli := Cli{bc}
+	cli := Cli{}
 	cli.Run()
 }

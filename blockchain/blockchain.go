@@ -9,6 +9,8 @@ const dbfile = "blockchain.db"
 var blocksbucket = []byte("blocks")
 var chainbucket = []byte("chain")
 
+const genesisCoinbaseData = "Coinbase tx data for genesis block"
+
 // BlockChain is structure containing slice of blocks
 // type BlockChain struct {
 // 	Blocks []*Block
@@ -51,7 +53,7 @@ Sample:
 */
 
 // CreateBlockChain method
-func CreateBlockChain() *BlockChain {
+func CreateBlockChain(address string) *BlockChain {
 
 	var tip []byte
 	db, _ := bolt.Open(dbfile, 0600, nil)
@@ -61,7 +63,8 @@ func CreateBlockChain() *BlockChain {
 		// check if BC is already present or not
 		if bucket == nil {
 			bucket, _ := tx.CreateBucket(blocksbucket)
-			genBlock := CreateGenesisBlock()
+			coinbaseTX := NewCoionbaseTX(address, genesisCoinbaseData)
+			genBlock := CreateGenesisBlock(coinbaseTX)
 			bucket.Put(genBlock.BlockHash, genBlock.Serialize())
 			bucket.Put([]byte("l"), genBlock.BlockHash)
 			tip = genBlock.BlockHash
@@ -81,7 +84,7 @@ func CreateBlockChain() *BlockChain {
 }
 
 // AddBlock func adds a new block to the main BlockChain struct
-func (bc *BlockChain) AddBlock(blockData string) {
+func (bc *BlockChain) AddBlock(transactions []*Transaction) {
 	// prevBlockHash := bc.Blocks[len(bc.Blocks)-1].BlockHash
 	// b := CreateBlock(blockData, prevBlockHash)
 	// bc.Blocks = append(bc.Blocks, b)
@@ -93,7 +96,7 @@ func (bc *BlockChain) AddBlock(blockData string) {
 	})
 
 	prevBlockHash := tip
-	b := CreateBlock(blockData, prevBlockHash)
+	b := CreateBlock(transactions, prevBlockHash)
 
 	// add to DB
 	_ = bc.db.Update(func(tx *bolt.Tx) error {

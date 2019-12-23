@@ -40,7 +40,7 @@ func (pow *ProofofWork) GetData(nonce int64) []byte {
 	var data []byte
 	data = bytes.Join([][]byte{
 		pow.block.PrevBlockHash,
-		pow.block.BlockData,
+		pow.block.HashTransactions(),
 		IntToHex(pow.block.Timestamp),
 		IntToHex(targetbits),
 		IntToHex(nonce)}, []byte{})
