@@ -7,7 +7,7 @@ import (
 )
 
 // reward
-const subsidy = 1
+const subsidy = 10
 
 // TXInput struct has the ID of previous transaction
 type TXInput struct {
@@ -18,7 +18,7 @@ type TXInput struct {
 
 // TXOutput the output(coins) of a TX
 type TXOutput struct {
-	value  int
+	Value  int
 	PubKey string
 }
 
@@ -49,6 +49,29 @@ func NewCoionbaseTX(to string, data string) *Transaction {
 	txout := TXOutput{subsidy, to}
 	tx := Transaction{nil, []TXInput{txin}, []TXOutput{txout}}
 	tx.SetID()
-
 	return &tx
+}
+
+// CanUnlockOutputWith check
+func (in *TXInput) CanUnlockOutputWith(unlockData string) bool {
+	if in.Sign == unlockData {
+		return true
+	}
+	return false
+}
+
+// CanbeUnlockedWith check
+func (out *TXOutput) CanbeUnlockedWith(unlockData string) bool {
+	if out.PubKey == unlockData {
+		return true
+	}
+	return false
+}
+
+// IsCoinBaseTX check if TX is coinbase
+func (tx Transaction) IsCoinBaseTX() bool {
+	if len(tx.Vin) == 1 && len(tx.Vin[0].TXid) == 0 && tx.Vin[0].Vout == -1 {
+		return true
+	}
+	return false
 }

@@ -74,7 +74,7 @@ func (pow *ProofofWork) ValidatePow() bool {
 	hash := sha256.Sum256(data)
 	hashint.SetBytes(hash[:])
 
-	// if hash value is less than target then it it POW
+	// if hash value is less than target then it is POW
 	if hashint.Cmp(pow.target) == -1 {
 		return true
 	}

@@ -1,6 +1,11 @@
 package main
 
 import (
+	"encoding/hex"
+	"fmt"
+	"log"
+	"os"
+
 	"github.com/boltdb/bolt"
 )
 
@@ -52,35 +57,77 @@ Sample:
 'l'                -> The hash of the last block in a chain
 */
 
+func dbExists() bool {
+	if _, err := os.Stat(dbfile); os.IsNotExist(err) {
+		return false
+	}
+
+	return true
+}
+
 // CreateBlockChain method
 func CreateBlockChain(address string) *BlockChain {
+	if dbExists() {
+		fmt.Println("Blockchain already exists.")
+		os.Exit(1)
+	}
+	var tip []byte
+	db, err := bolt.Open(dbfile, 0600, nil)
+	if err != nil {
+		log.Panic(err)
+	}
+	err = db.Update(func(tx *bolt.Tx) error {
+		cbtx := NewCoionbaseTX(address, genesisCoinbaseData)
+		genesis := CreateGenesisBlock(cbtx)
+		b, err := tx.CreateBucket([]byte(blocksbucket))
+		if err != nil {
+			log.Panic(err)
+		}
+		err = b.Put(genesis.BlockHash, genesis.Serialize())
+		if err != nil {
+			log.Panic(err)
+		}
+		err = b.Put([]byte("l"), genesis.BlockHash)
+		if err != nil {
+			log.Panic(err)
+		}
+		tip = genesis.BlockHash
+		return nil
+	})
+	if err != nil {
+		log.Panic(err)
+	}
+	bc := BlockChain{tip, db}
+	return &bc
+}
+
+// GetBlockChain Return the created blockchain
+func GetBlockChain(address string) *BlockChain {
+	if dbExists() == false {
+		fmt.Println("No existing blockchain found. Create one first.")
+		os.Exit(1)
+	}
 
 	var tip []byte
-	db, _ := bolt.Open(dbfile, 0600, nil)
+	db, err := bolt.Open(dbfile, 0600, nil)
+	if err != nil {
+		log.Panic(err)
+	}
 
-	_ = db.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket(blocksbucket)
-		// check if BC is already present or not
-		if bucket == nil {
-			bucket, _ := tx.CreateBucket(blocksbucket)
-			coinbaseTX := NewCoionbaseTX(address, genesisCoinbaseData)
-			genBlock := CreateGenesisBlock(coinbaseTX)
-			bucket.Put(genBlock.BlockHash, genBlock.Serialize())
-			bucket.Put([]byte("l"), genBlock.BlockHash)
-			tip = genBlock.BlockHash
-		} else {
-			tip = bucket.Get([]byte("l"))
-		}
+	err = db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksbucket))
+		tip = b.Get([]byte("l"))
+
 		return nil
 	})
 
-	// b := CreateGenesisBlock()
-	// blocks := []*Block{b}
-	// bc := &BlockChain{blocks}
+	if err != nil {
+		log.Panic(err)
+	}
 
-	bc := &BlockChain{tip, db}
+	bc := BlockChain{tip, db}
 
-	return bc
+	return &bc
 }
 
 // AddBlock func adds a new block to the main BlockChain struct
@@ -113,7 +160,9 @@ func (bc *BlockChain) AddBlock(transactions []*Transaction) {
 
 // GetIterator returns iterator at the tip of BC
 func (bc *BlockChain) GetIterator() *BlockChainIterator {
-	return &BlockChainIterator{bc.tip, bc.db}
+	temp := BlockChainIterator{bc.tip, bc.db}
+	return &temp
+	// return &BlockChainIterator{nil, nil}
 }
 
 // GetBlock returns the block the iterator is pointing to
@@ -134,3 +183,62 @@ func (bcIter *BlockChainIterator) GetBlock() *Block {
 // func (bc *BlockChain) PrintBlockChain() {
 
 // }
+
+// FindUnspentTX finds all unspent transactions, adds them up and returns them
+func (bc *BlockChain) FindUnspentTX(address string) []Transaction {
+	var unspentTX []Transaction
+	spentTXO := make(map[string][]int) // vals is an array of ints
+	bcIter := bc.GetIterator()
+	// fmt.Println(bc)
+	// return unspentTX
+	// bcIter := BlockChainIterator{bc.tip, bc.db}
+	for {
+		b := bcIter.GetBlock()
+		for _, tx := range b.Transactions {
+			txid := hex.EncodeToString(tx.TXid)
+		Label:
+			for outidx, out := range tx.Vout {
+				if spentTXO[txid] != nil {
+					// output was spent
+					for _, spentOut := range spentTXO[txid] {
+						if spentOut == outidx {
+							continue Label
+						}
+					}
+				}
+				if out.CanbeUnlockedWith(address) {
+					unspentTX = append(unspentTX, *tx)
+				}
+			}
+			if !tx.IsCoinBaseTX() {
+				for _, in := range tx.Vin {
+					if in.CanUnlockOutputWith(address) {
+						intxid := hex.EncodeToString(in.TXid)
+						spentTXO[intxid] = append(spentTXO[intxid], in.Vout)
+					}
+				}
+			}
+		}
+		// if prev block is genesis block stop
+		if len(b.PrevBlockHash) == 0 {
+			break
+		}
+	}
+
+	return unspentTX
+}
+
+// FindUTXO finds all unspent transaction outputs
+func (bc *BlockChain) FindUTXO(address string) []TXOutput {
+	var UTXOs []TXOutput
+	unspentTX := bc.FindUnspentTX(address)
+
+	for _, tx := range unspentTX {
+		for _, out := range tx.Vout {
+			if out.CanbeUnlockedWith(address) {
+				UTXOs = append(UTXOs, out)
+			}
+		}
+	}
+	return UTXOs
+}
