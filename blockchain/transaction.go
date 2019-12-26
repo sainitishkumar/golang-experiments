@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/gob"
+	"encoding/hex"
+	"fmt"
+	"os"
 )
 
 // reward
@@ -74,4 +77,29 @@ func (tx Transaction) IsCoinBaseTX() bool {
 		return true
 	}
 	return false
+}
+
+// NewUTXOTransaction creates a new tx from one peer to another
+func NewUTXOTransaction(from string, to string, amount int, bc *BlockChain) *Transaction {
+	var inputs []TXInput
+	var outputs []TXOutput
+	accumulated, spendableOutputs := bc.FindSpendableOutputs(from, amount)
+	if accumulated < amount {
+		fmt.Println("Not enough coins for address: ", from, "coins: ", accumulated)
+		os.Exit(2)
+	}
+	for txid, out := range spendableOutputs {
+		TXid, _ := hex.DecodeString(txid)
+		for _, out := range out {
+			input := TXInput{TXid, out, from}
+			inputs = append(inputs, input)
+		}
+	}
+	outputs = append(outputs, TXOutput{amount, to})
+	if accumulated > amount {
+		outputs = append(outputs, TXOutput{accumulated - amount, from})
+	}
+
+	tx := Transaction{nil, inputs, outputs}
+	return &tx
 }

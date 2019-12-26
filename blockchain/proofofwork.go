@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"fmt"
 	"math"
 	"math/big"
 )
@@ -55,6 +56,7 @@ func (pow *ProofofWork) Run() (int64, []byte) {
 	for nonce < maxNonce {
 		data := pow.GetData(int64(nonce))
 		hash = sha256.Sum256(data)
+		fmt.Printf("\r%x", hash)
 		hashint.SetBytes(hash[:])
 		// check if hash is less than the target value
 		if hashint.Cmp(pow.target) == -1 {
@@ -63,6 +65,7 @@ func (pow *ProofofWork) Run() (int64, []byte) {
 			nonce++
 		}
 	}
+	fmt.Printf("\n")
 	return int64(nonce), hash[:]
 }
 

@@ -130,8 +130,8 @@ func GetBlockChain(address string) *BlockChain {
 	return &bc
 }
 
-// AddBlock func adds a new block to the main BlockChain struct
-func (bc *BlockChain) AddBlock(transactions []*Transaction) {
+// MineBlock func adds a new block to the main BlockChain struct
+func (bc *BlockChain) MineBlock(transactions []*Transaction) {
 	// prevBlockHash := bc.Blocks[len(bc.Blocks)-1].BlockHash
 	// b := CreateBlock(blockData, prevBlockHash)
 	// bc.Blocks = append(bc.Blocks, b)
@@ -241,4 +241,25 @@ func (bc *BlockChain) FindUTXO(address string) []TXOutput {
 		}
 	}
 	return UTXOs
+}
+
+// FindSpendableOutputs finds spendable outputs for an address
+func (bc *BlockChain) FindSpendableOutputs(address string, amount int) (int, map[string][]int) {
+	unspentOut := make(map[string][]int)
+	unspentTx := bc.FindUnspentTX(address)
+	accumulated := 0
+Label:
+	for _, tx := range unspentTx {
+		txid := hex.EncodeToString(tx.TXid)
+		for outid, out := range tx.Vout {
+			if out.CanbeUnlockedWith(address) && accumulated < amount {
+				accumulated += out.Value
+				unspentOut[txid] = append(unspentOut[txid], outid)
+				if accumulated >= amount {
+					break Label
+				}
+			}
+		}
+	}
+	return accumulated, unspentOut
 }

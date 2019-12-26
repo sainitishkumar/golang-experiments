@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 )
 
@@ -72,6 +71,16 @@ func (cli *Cli) getBalance(address string) int {
 	return balance
 }
 
+// send func to send coins
+func (cli *Cli) send(from, to string, amount int) {
+	bc := GetBlockChain(from)
+	defer bc.db.Close()
+
+	tx := NewUTXOTransaction(from, to, amount, bc)
+	bc.MineBlock([]*Transaction{tx})
+	fmt.Println("Sent ", amount, "from", from, "to", to)
+}
+
 // Run is for parsing CL args and execute them
 func (cli *Cli) Run() {
 	getBalanceCmd := flag.NewFlagSet("getbalance", flag.ExitOnError)
@@ -81,34 +90,34 @@ func (cli *Cli) Run() {
 
 	getBalanceAddress := getBalanceCmd.String("address", "", "The address to get balance for")
 	createBlockchainAddress := createBlockchainCmd.String("address", "", "The address to send genesis block reward to")
-	// sendFrom := sendCmd.String("from", "", "Source wallet address")
-	// sendTo := sendCmd.String("to", "", "Destination wallet address")
-	// sendAmount := sendCmd.Int("amount", 0, "Amount to send")
+	sendFrom := sendCmd.String("from", "", "Source wallet address")
+	sendTo := sendCmd.String("to", "", "Destination wallet address")
+	sendAmount := sendCmd.Int("amount", 0, "Amount to send")
 
 	switch os.Args[1] {
 	case "getbalance":
 		err := getBalanceCmd.Parse(os.Args[2:])
 		if err != nil {
-			log.Panic(err)
+			fmt.Println(err)
 		}
 	case "createblockchain":
 		err := createBlockchainCmd.Parse(os.Args[2:])
 		if err != nil {
-			log.Panic(err)
+			fmt.Println(err)
 		}
 	case "printchain":
 		err := printChainCmd.Parse(os.Args[2:])
 		if err != nil {
-			log.Panic(err)
+			fmt.Println(err)
 		}
 	case "send":
 		err := sendCmd.Parse(os.Args[2:])
 		if err != nil {
-			log.Panic(err)
+			fmt.Println(err)
 		}
 	default:
 		cli.PrintUsage()
-		os.Exit(1)
+		os.Exit(2)
 	}
 
 	if getBalanceCmd.Parsed() {
@@ -131,12 +140,12 @@ func (cli *Cli) Run() {
 		cli.PrintChain()
 	}
 
-	// if sendCmd.Parsed() {
-	// 	if *sendFrom == "" || *sendTo == "" || *sendAmount <= 0 {
-	// 		sendCmd.Usage()
-	// 		os.Exit(1)
-	// 	}
+	if sendCmd.Parsed() {
+		if *sendFrom == "" || *sendTo == "" || *sendAmount <= 0 {
+			sendCmd.Usage()
+			os.Exit(1)
+		}
 
-	// 	cli.send(*sendFrom, *sendTo, *sendAmount)
-	// }
+		cli.send(*sendFrom, *sendTo, *sendAmount)
+	}
 }
