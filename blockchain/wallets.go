@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"io/ioutil"
+	"os"
 )
 
 const (
@@ -26,20 +27,24 @@ func (wallets *Wallets) CreateWallet() string {
 }
 
 // LoadfromFile loads from the walletFile
-func (wallets *Wallets) LoadfromFile() {
+func (wallets *Wallets) LoadfromFile() error {
+	if _, err := os.Stat(walletFile); os.IsNotExist(err) {
+		return err
+	}
 	filecontent, _ := ioutil.ReadFile(walletFile)
 	var wallet Wallets
 	gob.Register(elliptic.P256())
 	dec := gob.NewDecoder(bytes.NewReader(filecontent))
 	dec.Decode(&wallet)
 	wallets.Wallets = wallet.Wallets
+	return nil
 }
 
 // NewWallets load from wallet file
 func NewWallets() *Wallets {
 	wallets := Wallets{}
 	wallets.Wallets = make(map[string]*Wallet)
-	wallets.LoadfromFile()
+	_ = wallets.LoadfromFile()
 	return &wallets
 }
 
