@@ -110,7 +110,12 @@ func (tx Transaction) IsCoinBaseTX() bool {
 func NewUTXOTransaction(from []byte, to []byte, amount int, bc *BlockChain) *Transaction {
 	var inputs []TXInput
 	var outputs []TXOutput
-	accumulated, spendableOutputs := bc.FindSpendableOutputs(from, amount)
+	wallets := NewWallets()
+
+	wallet := wallets.GetWallet(string(from))
+	pubkeyhash := HashPubKey(wallet.PublicKey)
+
+	accumulated, spendableOutputs := bc.FindSpendableOutputs(pubkeyhash, amount)
 	if accumulated < amount {
 		fmt.Println("Not enough coins for address: ", from, "coins: ", accumulated)
 		os.Exit(2)
@@ -118,7 +123,7 @@ func NewUTXOTransaction(from []byte, to []byte, amount int, bc *BlockChain) *Tra
 	for txid, out := range spendableOutputs {
 		TXid, _ := hex.DecodeString(txid)
 		for _, out := range out {
-			input := TXInput{TXid, out, from}
+			input := TXInput{TXid, out, nil, wallet.PublicKey}
 			inputs = append(inputs, input)
 		}
 	}

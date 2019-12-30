@@ -40,7 +40,7 @@ func (cli *CLI) createBlockchain(address string) {
 func (cli *CLI) createWallet() {
 	wallets := NewWallets()
 	address := wallets.CreateWallet()
-	wallets.SaveToFile()
+	wallets.SavetoFile()
 
 	fmt.Printf("Your new address: %s\n", address)
 }
