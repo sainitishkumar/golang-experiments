@@ -74,6 +74,7 @@ func (cli *CLI) listAddresses() {
 	addresses := wallets.GetAddresses()
 
 	for _, address := range addresses {
+		cli.getBalance(address)
 		fmt.Println(address)
 	}
 }
@@ -86,8 +87,9 @@ func (cli *CLI) getBalance(address string) {
 	defer bc.db.Close()
 
 	balance := 0
-	pubKeyHash := Base58Decode([]byte(address))
-	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
+	// pubKeyHash := Base58Decode([]byte(address))
+	// pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
+	pubKeyHash := []byte(address)
 	UTXOs := bc.FindUTXO(pubKeyHash)
 
 	for _, out := range UTXOs {
