@@ -32,7 +32,7 @@ func (cli *CLI) createBlockchain(address string) {
 	if !ValidateAddress(address) {
 		log.Panic("ERROR: Address is not valid")
 	}
-	bc := CreateBlockChain([]byte(address))
+	bc := CreateBlockChain(address)
 	bc.db.Close()
 	fmt.Println("Done!")
 }
@@ -46,7 +46,7 @@ func (cli *CLI) createWallet() {
 }
 
 func (cli *CLI) printChain() {
-	bc := GetBlockChain([]byte(""))
+	bc := GetBlockChain("")
 	defer bc.db.Close()
 
 	bci := bc.GetIterator()
@@ -59,7 +59,8 @@ func (cli *CLI) printChain() {
 		pow := NewProofofWork(block)
 		fmt.Printf("PoW: %s\n\n", strconv.FormatBool(pow.ValidatePow()))
 		for _, tx := range block.Transactions {
-			fmt.Println(tx)
+			temp := tx.String()
+			fmt.Println(temp)
 		}
 		fmt.Printf("\n\n")
 
@@ -83,13 +84,13 @@ func (cli *CLI) getBalance(address string) {
 	if !ValidateAddress(address) {
 		log.Panic("ERROR: Address is not valid")
 	}
-	bc := GetBlockChain([]byte(address))
+	bc := GetBlockChain(address)
 	defer bc.db.Close()
 
 	balance := 0
-	// pubKeyHash := Base58Decode([]byte(address))
-	// pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
-	pubKeyHash := []byte(address)
+	pubKeyHash := Base58Decode([]byte(address))
+	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
+	// pubKeyHash := []byte(address)
 	UTXOs := bc.FindUTXO(pubKeyHash)
 
 	for _, out := range UTXOs {
@@ -107,10 +108,10 @@ func (cli *CLI) send(from, to string, amount int) {
 		log.Panic("ERROR: Recipient address is not valid")
 	}
 
-	bc := GetBlockChain([]byte(from))
+	bc := GetBlockChain(from)
 	defer bc.db.Close()
 
-	tx := NewUTXOTransaction([]byte(from), []byte(to), amount, bc)
+	tx := NewUTXOTransaction(from, to, amount, bc)
 	bc.MineBlock([]*Transaction{tx})
 	fmt.Println("Success!")
 }
