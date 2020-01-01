@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"crypto/ecdsa"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -66,7 +69,7 @@ func dbExists() bool {
 }
 
 // CreateBlockChain method
-func CreateBlockChain(pubkeyhash []byte) *BlockChain {
+func CreateBlockChain(pubkeyhash string) *BlockChain {
 	if dbExists() {
 		fmt.Println("Blockchain already exists.")
 		os.Exit(1)
@@ -102,7 +105,7 @@ func CreateBlockChain(pubkeyhash []byte) *BlockChain {
 }
 
 // GetBlockChain Return the created blockchain
-func GetBlockChain(address []byte) *BlockChain {
+func GetBlockChain(address string) *BlockChain {
 	if dbExists() == false {
 		fmt.Println("No existing blockchain found. Create one first.")
 		os.Exit(1)
@@ -135,6 +138,15 @@ func (bc *BlockChain) MineBlock(transactions []*Transaction) {
 	// prevBlockHash := bc.Blocks[len(bc.Blocks)-1].BlockHash
 	// b := CreateBlock(blockData, prevBlockHash)
 	// bc.Blocks = append(bc.Blocks, b)
+
+	// verify TX
+	for _, tx := range transactions {
+		if bc.VerifyTX(tx) != true {
+			fmt.Println("Not correct tx")
+			os.Exit(2)
+		}
+	}
+
 	var tip []byte
 	_ = bc.db.View(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket(blocksbucket)
@@ -262,4 +274,41 @@ Label:
 		}
 	}
 	return accumulated, unspentOut
+}
+
+// FindTransaction return tx with id
+func (bc *BlockChain) FindTransaction(TXid []byte) (Transaction, error) {
+	bci := bc.GetIterator()
+	for {
+		b := bci.GetBlock()
+		for _, tx := range b.Transactions {
+			if bytes.Compare(tx.TXid, TXid) == 0 {
+				return *tx, nil
+			}
+		}
+		if len(b.PrevBlockHash) == 0 {
+			break
+		}
+	}
+	return Transaction{}, errors.New("No tx found with id: " + string(TXid))
+}
+
+// SignTX signs a TX
+func (bc *BlockChain) SignTX(tx *Transaction, prikey ecdsa.PrivateKey) {
+	PrevTX := make(map[string]Transaction)
+	for _, vin := range tx.Vin {
+		prevtx, _ := bc.FindTransaction(vin.TXid)
+		PrevTX[hex.EncodeToString(vin.TXid)] = prevtx
+	}
+	tx.Sign(prikey, PrevTX)
+}
+
+// VerifyTX verifies for authenticity
+func (bc *BlockChain) VerifyTX(tx *Transaction) bool {
+	PrevTX := make(map[string]Transaction)
+	for _, vin := range tx.Vin {
+		prevtx, _ := bc.FindTransaction(vin.TXid)
+		PrevTX[hex.EncodeToString(vin.TXid)] = prevtx
+	}
+	return tx.Verify(PrevTX)
 }
