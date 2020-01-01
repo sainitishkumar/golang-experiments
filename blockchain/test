@@ -1,0 +1,8 @@
+<1> ./blockchain createwallet
+<2> ./blockchain createwallet
+
+./blockchain createblockchain -address <1>
+
+./blockchain send -from <1> -to <2> -amount 3
+
+./blockchain listaddresses
