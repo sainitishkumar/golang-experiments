@@ -218,23 +218,20 @@ func (tx *Transaction) Hash() []byte {
 }
 
 // Sign the TX
-func (tx *Transaction) Sign(privkey ecdsa.PrivateKey, PrevTX map[string]Transaction) {
+func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transaction) {
 	if tx.IsCoinBaseTX() {
 		return
 	}
-	txtrim := tx.TrimTransaction()
-	for inid, vin := range txtrim.Vin {
-		prevTX := PrevTX[hex.EncodeToString(vin.TXid)]
-		txtrim.Vin[inid].Sign = nil
-		txtrim.Vin[inid].PubKey = prevTX.Vout[vin.Vout].PubKeyHash
-		txtrim.TXid = txtrim.Hash()
-
-		fmt.Println("sign", txtrim.TXid)
-
-		txtrim.Vin[inid].PubKey = nil
-		r, s, _ := ecdsa.Sign(rand.Reader, &privkey, txtrim.TXid)
-		sign := append(r.Bytes(), s.Bytes()...)
-		tx.Vin[inid].Sign = sign
+	txCopy := tx.TrimTransaction()
+	for inID, vin := range txCopy.Vin {
+		prevTx := prevTXs[hex.EncodeToString(vin.TXid)]
+		txCopy.Vin[inID].Sign = nil
+		txCopy.Vin[inID].PubKey = prevTx.Vout[vin.Vout].PubKeyHash
+		txCopy.TXid = txCopy.Hash()
+		txCopy.Vin[inID].PubKey = nil
+		r, s, _ := ecdsa.Sign(rand.Reader, &privKey, txCopy.TXid)
+		signature := append(r.Bytes(), s.Bytes()...)
+		tx.Vin[inID].Sign = signature
 	}
 }
 
@@ -242,7 +239,7 @@ func (tx *Transaction) Sign(privkey ecdsa.PrivateKey, PrevTX map[string]Transact
 func (tx *Transaction) Verify(PrevTX map[string]Transaction) bool {
 	txtrim := tx.TrimTransaction()
 	ellipticCurve := elliptic.P256()
-	for inid, vin := range txtrim.Vin {
+	for inid, vin := range tx.Vin {
 		prevTX := PrevTX[hex.EncodeToString(vin.TXid)]
 		txtrim.Vin[inid].Sign = nil
 		txtrim.Vin[inid].PubKey = prevTX.Vout[vin.Vout].PubKeyHash
@@ -263,9 +260,9 @@ func (tx *Transaction) Verify(PrevTX map[string]Transaction) bool {
 		pubkeytest := ecdsa.PublicKey{ellipticCurve, &x, &y}
 		fmt.Println("verify", tx.TXid, txtrim.TXid)
 		fmt.Println(ecdsa.Verify(&pubkeytest, txtrim.TXid, &r, &s))
-		// if !ecdsa.Verify(&pubkeytest, txtrim.TXid, &r, &s) {
-		// 	return false
-		// }
+		if !ecdsa.Verify(&pubkeytest, txtrim.TXid, &r, &s) {
+			return false
+		}
 	}
 	return true
 }

@@ -101,6 +101,9 @@ func (cli *CLI) getBalance(address string) {
 }
 
 func (cli *CLI) send(from, to string, amount int) {
+	if from == to {
+		log.Panic("ERROR: Sender and Receiver address are same!")
+	}
 	if !ValidateAddress(from) {
 		log.Panic("ERROR: Sender address is not valid")
 	}
