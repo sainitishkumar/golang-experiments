@@ -19,6 +19,7 @@ func (cli *CLI) printUsage() {
 	fmt.Println("  listaddresses - Lists all addresses from the wallet file")
 	fmt.Println("  printchain - Print all the blocks of the blockchain")
 	fmt.Println("  send -from FROM -to TO -amount AMOUNT - Send AMOUNT of coins from FROM address to TO")
+	fmt.Println("  reindexutxo - Rebuilds the UTXO set")
 }
 
 func (cli *CLI) validateArgs() {
@@ -33,7 +34,9 @@ func (cli *CLI) createBlockchain(address string) {
 		log.Panic("ERROR: Address is not valid")
 	}
 	bc := CreateBlockChain(address)
-	bc.db.Close()
+	defer bc.db.Close()
+	utxoset := UTXOSet{bc}
+	utxoset.Reindex()
 	fmt.Println("Done!")
 }
 
@@ -85,13 +88,14 @@ func (cli *CLI) getBalance(address string) {
 		log.Panic("ERROR: Address is not valid")
 	}
 	bc := GetBlockChain(address)
+	utxo := UTXOSet{bc}
 	defer bc.db.Close()
 
 	balance := 0
 	pubKeyHash := Base58Decode([]byte(address))
 	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
 	// pubKeyHash := []byte(address)
-	UTXOs := bc.FindUTXO(pubKeyHash)
+	UTXOs := utxo.FindUTXO(pubKeyHash)
 
 	for _, out := range UTXOs {
 		balance += out.Value
@@ -112,12 +116,22 @@ func (cli *CLI) send(from, to string, amount int) {
 	}
 
 	bc := GetBlockChain(from)
+	utxoset := UTXOSet{bc}
 	defer bc.db.Close()
 
-	tx := NewUTXOTransaction(from, to, amount, bc)
+	tx := NewUTXOTransaction(from, to, amount, utxoset)
 	coinbaseTx := NewCoionbaseTX(from, "")
-	bc.MineBlock([]*Transaction{coinbaseTx, tx})
+	newblock := bc.MineBlock([]*Transaction{coinbaseTx, tx})
+	utxoset.Update(newblock)
 	fmt.Println("Success!")
+}
+
+func (cli *CLI) reindexUTXO() {
+	bc := GetBlockChain("")
+	UTXOSet := UTXOSet{bc}
+	UTXOSet.Reindex()
+	count := UTXOSet.CountTransactions()
+	fmt.Printf("Done! There are %d transactions in the UTXO set.\n", count)
 }
 
 // Run parses command line arguments and processes commands
@@ -136,6 +150,8 @@ func (cli *CLI) Run() {
 	sendFrom := sendCmd.String("from", "", "Source wallet address")
 	sendTo := sendCmd.String("to", "", "Destination wallet address")
 	sendAmount := sendCmd.Int("amount", 0, "Amount to send")
+
+	reindexUTXOCmd := flag.NewFlagSet("reindexutxo", flag.ExitOnError)
 
 	switch os.Args[1] {
 	case "getbalance":
@@ -165,6 +181,11 @@ func (cli *CLI) Run() {
 		}
 	case "send":
 		err := sendCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Panic(err)
+		}
+	case "reindexutxo":
+		err := reindexUTXOCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Panic(err)
 		}
@@ -199,6 +220,10 @@ func (cli *CLI) Run() {
 
 	if printChainCmd.Parsed() {
 		cli.printChain()
+	}
+
+	if reindexUTXOCmd.Parsed() {
+		cli.reindexUTXO()
 	}
 
 	if sendCmd.Parsed() {

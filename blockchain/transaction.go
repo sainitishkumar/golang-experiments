@@ -38,6 +38,27 @@ type Transaction struct {
 	Vout []TXOutput
 }
 
+// TXOutputs struct for UTXOSet
+type TXOutputs struct {
+	Outputs []TXOutput
+}
+
+// Serialise txoutputs into bytes
+func (txouts TXOutputs) Serialise() []byte {
+	var buff bytes.Buffer
+	enc := gob.NewEncoder(&buff)
+	enc.Encode(txouts)
+	return buff.Bytes()
+}
+
+// DeSerializeOutputs opposite of above func
+func DeSerializeOutputs(outData []byte) TXOutputs {
+	var txoutputs TXOutputs
+	dec := gob.NewDecoder(bytes.NewReader(outData))
+	dec.Decode(&txoutputs)
+	return txoutputs
+}
+
 // SetID sets the TXID based on hash of its contents
 func (tx *Transaction) SetID() {
 	var encoded bytes.Buffer
@@ -145,7 +166,7 @@ func NewTXOutput(value int, address string) *TXOutput {
 }
 
 // NewUTXOTransaction creates a new tx from one peer to another
-func NewUTXOTransaction(from, to string, amount int, bc *BlockChain) *Transaction {
+func NewUTXOTransaction(from, to string, amount int, utxoset UTXOSet) *Transaction {
 	var inputs []TXInput
 	var outputs []TXOutput
 	wallets := NewWallets()
@@ -153,7 +174,7 @@ func NewUTXOTransaction(from, to string, amount int, bc *BlockChain) *Transactio
 	wallet := wallets.GetWallet(string(from))
 	pubkeyhash := HashPubKey(wallet.PublicKey)
 
-	accumulated, spendableOutputs := bc.FindSpendableOutputs(pubkeyhash, amount)
+	accumulated, spendableOutputs := utxoset.FindSpendableOutputs(pubkeyhash, amount)
 	if accumulated < amount {
 		fmt.Println("Not enough coins for address: ", from, "coins: ", accumulated)
 		os.Exit(2)
@@ -172,7 +193,7 @@ func NewUTXOTransaction(from, to string, amount int, bc *BlockChain) *Transactio
 
 	tx := Transaction{nil, inputs, outputs}
 	tx.TXid = tx.Hash()
-	bc.SignTX(&tx, wallet.PrivateKey)
+	utxoset.BlockChain.SignTX(&tx, wallet.PrivateKey)
 
 	return &tx
 }
