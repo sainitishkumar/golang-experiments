@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/gob"
 	"time"
 )
@@ -69,11 +68,13 @@ func DeSerialize(data []byte) *Block {
 // HashTransactions hashes all the tx in a block and returns the hash value
 func (b *Block) HashTransactions() []byte {
 	var txHashes [][]byte
-	var txhash [32]byte
+	// var txhash [32]byte
 
 	for _, tx := range b.Transactions {
-		txHashes = append(txHashes, tx.TXid)
+		txHashes = append(txHashes, tx.Serialise())
 	}
-	txhash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
-	return txhash[:]
+	// txhash = sha256.Sum256(bytes.Join(txHashes, []byte{}))
+	// return txhash[:]
+	mkltree := NewMerkelTree(txHashes)
+	return mkltree.RootNode.Data
 }
