@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"math/rand"
 )
 
 const targetbits = 20
@@ -62,7 +63,8 @@ func (pow *ProofofWork) Run() (int64, []byte) {
 		if hashint.Cmp(pow.target) == -1 {
 			break
 		} else {
-			nonce++
+			randomnum := rand.Intn(maxNonce)
+			nonce = randomnum
 		}
 	}
 	fmt.Printf("\n")
